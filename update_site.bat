@@ -1,8 +1,9 @@
 @echo off
 chcp 65001 >nul
-title Akram Tracking Program Updater
+title Al-Bara' ibn Malik - Updater
 echo ==========================================
-echo    Akram Tracking Program Updater
+echo    Al-Bara' ibn Malik - Updater
+echo    https://github.com/Akram-akl/Al-Bara-ibn-Malik
 echo ==========================================
 echo.
 echo 1. Checking changes...

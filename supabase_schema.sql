@@ -576,9 +576,14 @@ DELETE FROM level_settings WHERE feature_name IN ('auth_passwords', 'master_pass
 
 INSERT INTO level_settings (level, feature_name, is_enabled, settings)
 VALUES 
-    ('ibn_umar', 'auth_passwords', true, '{"teacherPass": "1234"}'::jsonb),
-    ('ijazat', 'auth_passwords', true, '{"teacherPass": "5678"}'::jsonb),
-    ('_global', 'master_password', true, '{"password": "112233"}'::jsonb);
+    ('uthman', 'auth_passwords', true, '{"teacherPass": "6405"}'::jsonb),
+    ('umar', 'auth_passwords', true, '{"teacherPass": "4343"}'::jsonb),
+    ('khalid', 'auth_passwords', true, '{"teacherPass": "8786"}'::jsonb),
+    ('ahmad_hanbal', 'auth_passwords', true, '{"teacherPass": "2253"}'::jsonb),
+    ('shatbi', 'auth_passwords', true, '{"teacherPass": "8786"}'::jsonb),
+    ('abu_amr', 'auth_passwords', true, '{"teacherPass": "4540"}'::jsonb),
+    ('bukhari', 'auth_passwords', true, '{"teacherPass": "8305"}'::jsonb),
+    ('_global', 'master_password', true, '{"password": "654168"}'::jsonb);
 
 -- =====================================================
 -- Create Indexes
@@ -631,3 +636,4 @@ ALTER TABLE student_plans ADD COLUMN IF NOT EXISTS pages_per_day NUMERIC DEFAULT
 ALTER TABLE student_plans ADD COLUMN IF NOT EXISTS original_snapshot JSONB;
 
 NOTIFY pgrst, 'reload schema';
+

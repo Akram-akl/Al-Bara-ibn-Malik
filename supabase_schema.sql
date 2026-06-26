@@ -493,7 +493,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     level TEXT,
     role TEXT,
     device_info TEXT,
-    created_at TIMESTAMPTZ DEFAULT NOW()
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;

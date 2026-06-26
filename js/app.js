@@ -1510,7 +1510,7 @@ function renderSettings() {
              </div>
 
              <div class="text-center text-xs text-gray-400 mt-8 mb-4">
-                 <p>برنامج المتابعة - إصدار v4.4.0</p>
+                 <p>برنامج المتابعة - إصدار v1</p>
                  <p class="opacity-50 mt-1 font-light">تم إنشاء هذا التطبيق بواسطة أكرم عقل</p>
              </div>
         </div>

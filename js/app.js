@@ -1187,23 +1187,27 @@ async function acceptTransferRequest(requestId, studentId, deleteOldDataStr, fro
         }
 
         // 4. ALWAYS delete student plan (both records and main plan) because the student moved
-        const plansQ = window.firebaseOps.query(
-            window.firebaseOps.collection(window.db, 'student_plans'),
-            window.firebaseOps.where('student_id', '==', studentId)
-        );
-        const plansSnap = await window.firebaseOps.getDocs(plansQ);
-        for (const planDoc of plansSnap.docs) {
-            // Delete daily records for this plan
-            const dailyQ = window.firebaseOps.query(
-                window.firebaseOps.collection(window.db, 'plan_daily_records'),
-                window.firebaseOps.where('plan_id', '==', planDoc.id)
+        try {
+            const plansQ = window.firebaseOps.query(
+                window.firebaseOps.collection(window.db, 'student_plans'),
+                window.firebaseOps.where('student_id', '==', studentId)
             );
-            const dailySnap = await window.firebaseOps.getDocs(dailyQ);
-            for (const r of dailySnap.docs) {
-                await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'plan_daily_records', r.id));
+            const plansSnap = await window.firebaseOps.getDocs(plansQ);
+            for (const planDoc of plansSnap.docs) {
+                // Delete daily records for this plan
+                const dailyQ = window.firebaseOps.query(
+                    window.firebaseOps.collection(window.db, 'plan_daily_records'),
+                    window.firebaseOps.where('plan_id', '==', planDoc.id)
+                );
+                const dailySnap = await window.firebaseOps.getDocs(dailyQ);
+                for (const r of dailySnap.docs) {
+                    await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'plan_daily_records', r.id));
+                }
+                // Delete the plan itself
+                await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'student_plans', planDoc.id));
             }
-            // Delete the plan itself
-            await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'student_plans', planDoc.id));
+        } catch (planError) {
+            console.error("Failed to delete student plans on transfer:", planError);
         }
 
         // 5. Delete the request
@@ -8438,7 +8442,7 @@ function _doOpenAbsenceModal() {
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'absence-modal';
-            modal.className = 'fixed inset-0 bg-black/60 z-[150] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
+            modal.className = 'fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
             document.body.appendChild(modal);
         }
         modal.innerHTML = `

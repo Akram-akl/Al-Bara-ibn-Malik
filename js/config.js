@@ -8,8 +8,25 @@
 const APP_CONFIG = {
     // 1. App Identity
     appName: "البراء بن مالك",
+    appDescription: "منصة التحفيظ والمتابعة القرآنية",
     
-    // 2. Supabase Database Configuration
+    // 2. Theme Configuration (الثيمات)
+    // يمكنك تغيير ألوان التطبيق من هنا. الألوان الافتراضية هي درجات الأخضر (Emerald).
+    // لتغيير لون التطبيق، استبدل القيم أدناه بدرجات اللون المطلوب (مثلاً: أزرق، أحمر، الخ)
+    themeColors: {
+        50: '#ecfdf5',
+        100: '#d1fae5',
+        200: '#a7f3d0',
+        300: '#6ee7b7',
+        400: '#34d399',
+        500: '#10b981', // اللون الأساسي
+        600: '#059669',
+        700: '#047857',
+        800: '#065f46',
+        900: '#064e3b',
+    },
+
+    // 3. Supabase Database Configuration (أكواد قاعدة البيانات)
     supabaseUrl: 'https://mngfqzkhlfoxmlsjbwyt.supabase.co',
     supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uZ2ZxemtobGZveG1sc2pid3l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NTk5MzcsImV4cCI6MjA5ODAzNTkzN30.0BQkL5uKQpUb-DGEIiOlCEE42ugCAy4s4rji2UeZDCY',
 

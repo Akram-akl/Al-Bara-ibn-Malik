@@ -81,13 +81,29 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="./css/styles.css?v=1">
-
-
-    <!-- Config & Supabase SDK -->
-    <script src="./js/config.js?v=1"></script>
+    <!-- Config, Tailwind & Supabase SDK -->
+    <script src="./js/config.js?v=2"></script>
+    <script>
+        // Apply custom theme colors if defined in config
+        if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.themeColors) {
+            window.tailwind = {
+                config: {
+                    theme: {
+                        extend: {
+                            colors: {
+                                // We map 'emerald' to the custom theme colors because the app HTML
+                                // uses emerald classes everywhere (e.g. bg-emerald-600)
+                                emerald: APP_CONFIG.themeColors
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase.js?v=1"></script>
+    <script src="./js/supabase.js?v=2"></script>
 </head>
 
 

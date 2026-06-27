@@ -24,6 +24,16 @@
             } catch (e) {
                 alert('عذراً، متصفحك قديم جداً ولا يدعم تشغيل التطبيق بكامل مميزاته. يرجى استخدام متصفح حديث مثل Chrome.\n' + e.message);
             }
+            
+            // Dynamic App Name Binding
+            window.addEventListener('DOMContentLoaded', () => {
+                if (typeof APP_CONFIG !== 'undefined') {
+                    document.title = APP_CONFIG.appName;
+                    document.querySelectorAll('.dynamic-app-name').forEach(el => {
+                        el.textContent = APP_CONFIG.appName;
+                    });
+                }
+            });
         })();
     </script>
 
@@ -74,7 +84,8 @@
     <link rel="stylesheet" href="./css/styles.css?v=1">
 
 
-    <!-- Supabase SDK -->
+    <!-- Config & Supabase SDK -->
+    <script src="./js/config.js?v=1"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./js/supabase.js?v=1"></script>
 </head>
@@ -110,7 +121,7 @@
                 </div>
 
                 <div class="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <h1 class="text-xl font-black text-center mb-1 text-gray-800 dark:text-white">البراء بن مالك</h1>
+                    <h1 class="text-xl font-black text-center mb-1 text-gray-800 dark:text-white dynamic-app-name">البراء بن مالك</h1>
                     <p class="text-center text-gray-500 text-xs mb-6">منصة التحفيظ والمتابعه القرآنية</p>
 
                     <!-- Step 1: Role Selection -->
@@ -383,7 +394,7 @@
                 <div class="flex items-center gap-3">
                     <i data-lucide="award" class="w-8 h-8 text-yellow-300"></i>
                     <div>
-                        <h1 class="font-bold text-lg leading-tight">البراء بن مالك</h1>
+                        <h1 class="font-bold text-lg leading-tight dynamic-app-name">البراء بن مالك</h1>
                         <p class="text-emerald-200 text-xs" id="current-mode-label">وضع الطالب</p>
                     </div>
                 </div>

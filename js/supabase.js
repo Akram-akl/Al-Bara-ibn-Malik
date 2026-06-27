@@ -6,8 +6,8 @@
 // Project: البراء بن مالك
 // =====================================================
 
-const SUPABASE_URL = 'https://mngfqzkhlfoxmlsjbwyt.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1uZ2ZxemtobGZveG1sc2pid3l0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NTk5MzcsImV4cCI6MjA5ODAzNTkzN30.0BQkL5uKQpUb-DGEIiOlCEE42ugCAy4s4rji2UeZDCY';
+const SUPABASE_URL = APP_CONFIG.supabaseUrl;
+const SUPABASE_ANON_KEY = APP_CONFIG.supabaseAnonKey;
 
 // Initialize Supabase Client
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

@@ -1,13 +1,5 @@
 // --- Constants ---
-const LEVELS = {
-    'uthman':      { name: 'حلقة عثمان بن عفان',      emoji: '<i data-lucide="shield" class="w-6 h-6 inline-block text-emerald-500"></i>' },
-    'umar':        { name: 'حلقة عمر بن الخطاب',       emoji: '<i data-lucide="sword" class="w-6 h-6 inline-block text-blue-500"></i>' },
-    'khalid':      { name: 'حلقة خالد بن الوليد',       emoji: '<i data-lucide="zap" class="w-6 h-6 inline-block text-orange-500"></i>' },
-    'ahmad_hanbal':{ name: 'حلقة الإمام أحمد بن حنبل', emoji: '<i data-lucide="book-open" class="w-6 h-6 inline-block text-teal-500"></i>' },
-    'shatbi':      { name: 'حلقة الإمام الشاطبي',       emoji: '<i data-lucide="scroll" class="w-6 h-6 inline-block text-purple-500"></i>' },
-    'abu_amr':     { name: 'حلقة أبو عمرو البصري',     emoji: '<i data-lucide="graduation-cap" class="w-6 h-6 inline-block text-yellow-500"></i>', isAdult: true },
-    'bukhari':     { name: 'حلقة الإمام البخاري',       emoji: '<i data-lucide="award" class="w-6 h-6 inline-block text-amber-500"></i>', isAdult: true }
-};
+const LEVELS = APP_CONFIG.levels;
 
 function getLabel(key) {
     const isAdult = !!(LEVELS[state.currentLevel] && LEVELS[state.currentLevel].isAdult);
@@ -101,6 +93,38 @@ function toggleModal(id, show = true) {
     else modal.classList.add('hidden');
 }
 window.closeModal = (id) => toggleModal(id, false);
+
+function showCustomConfirm(message) {
+    return new Promise((resolve) => {
+        const modalId = 'custom-confirm-' + Date.now();
+        const html = `
+            <div id="${modalId}" class="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in">
+                <div class="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-sm p-6 shadow-2xl text-center border border-gray-100 dark:border-gray-700">
+                    <div class="bg-blue-100 dark:bg-blue-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-600 dark:text-blue-400">
+                        <i data-lucide="help-circle" class="w-8 h-8"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-6 text-gray-800 dark:text-gray-100">${message}</h3>
+                    <div class="flex gap-3">
+                        <button id="btn-cancel-${modalId}" class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 font-bold transition">إلغاء</button>
+                        <button id="btn-confirm-${modalId}" class="flex-1 py-2.5 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 font-bold shadow-lg transition">تأكيد</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', html);
+        if (window.lucide) window.lucide.createIcons();
+
+        const modal = document.getElementById(modalId);
+        document.getElementById(`btn-cancel-${modalId}`).onclick = () => {
+            modal.remove();
+            resolve(false);
+        };
+        document.getElementById(`btn-confirm-${modalId}`).onclick = () => {
+            modal.remove();
+            resolve(true);
+        };
+    });
+}
 
 // --- Image Compression Utility ---
 async function compressImage(file, maxWidth = 150, maxHeight = 150, quality = 0.4) {
@@ -1127,7 +1151,9 @@ function updateTransferRequestsUI() {
 }
 
 async function acceptTransferRequest(requestId, studentId, deleteOldDataStr, fromLevel) {
-    if (!confirm(`هل أنت متأكد من قبول ${getLabel('student')} في حلقتكم؟`)) return;
+    const isConfirmed = await showCustomConfirm(`هل أنت متأكد من قبول ${getLabel('student')} في حلقتكم؟`);
+    if (!isConfirmed) return;
+    
     const deleteOldData = (deleteOldDataStr === 'true');
     
     try {
@@ -1151,22 +1177,36 @@ async function acceptTransferRequest(requestId, studentId, deleteOldDataStr, fro
             }
         }
 
-        // 3. Delete old data if requested
+        // 3. Delete old scores if requested
         if (deleteOldData) {
             const scoresQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, "scores"), window.firebaseOps.where("studentId", "==", studentId));
             const scoresSnap = await window.firebaseOps.getDocs(scoresQ);
             for (const sDoc of scoresSnap.docs) {
                 await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "scores", sDoc.id));
             }
-
-            const planRecordsQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, "plan_daily_records"), window.firebaseOps.where("student_id", "==", studentId));
-            const planRecordsSnap = await window.firebaseOps.getDocs(planRecordsQ);
-            for (const pDoc of planRecordsSnap.docs) {
-                await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "plan_daily_records", pDoc.id));
-            }
         }
 
-        // 4. Delete the request
+        // 4. ALWAYS delete student plan (both records and main plan) because the student moved
+        const plansQ = window.firebaseOps.query(
+            window.firebaseOps.collection(window.db, 'student_plans'),
+            window.firebaseOps.where('student_id', '==', studentId)
+        );
+        const plansSnap = await window.firebaseOps.getDocs(plansQ);
+        for (const planDoc of plansSnap.docs) {
+            // Delete daily records for this plan
+            const dailyQ = window.firebaseOps.query(
+                window.firebaseOps.collection(window.db, 'plan_daily_records'),
+                window.firebaseOps.where('plan_id', '==', planDoc.id)
+            );
+            const dailySnap = await window.firebaseOps.getDocs(dailyQ);
+            for (const r of dailySnap.docs) {
+                await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'plan_daily_records', r.id));
+            }
+            // Delete the plan itself
+            await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'student_plans', planDoc.id));
+        }
+
+        // 5. Delete the request
         await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "transfer_requests", requestId));
         
         showToast(`تم قبول ونقل ${getLabel('student')} لحلقتكم بنجاح ✅`);
@@ -1177,7 +1217,8 @@ async function acceptTransferRequest(requestId, studentId, deleteOldDataStr, fro
 }
 
 async function rejectTransferRequest(requestId) {
-    if (!confirm(`هل أنت متأكد من رفض استلام ${getLabel('student')}؟`)) return;
+    const isConfirmed = await showCustomConfirm(`هل أنت متأكد من رفض استلام ${getLabel('student')}؟`);
+    if (!isConfirmed) return;
     try {
         await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "transfer_requests", requestId), {
             status: 'rejected',
@@ -4626,7 +4667,7 @@ function openAbsenceOptions() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'absence-modal';
-        modal.className = 'fixed inset-0 bg-black/60 z-[150] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
+        modal.className = 'fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
         // Content will be set below
         document.body.appendChild(modal);
     }

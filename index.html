@@ -25,13 +25,27 @@
                 alert('عذراً، متصفحك قديم جداً ولا يدعم تشغيل التطبيق بكامل مميزاته. يرجى استخدام متصفح حديث مثل Chrome.\n' + e.message);
             }
             
-            // Dynamic App Name Binding
+            // Dynamic App Identity Binding
             window.addEventListener('DOMContentLoaded', () => {
                 if (typeof APP_CONFIG !== 'undefined') {
+                    // App Name
                     document.title = APP_CONFIG.appName;
                     document.querySelectorAll('.dynamic-app-name').forEach(el => {
                         el.textContent = APP_CONFIG.appName;
                     });
+                    
+                    // App Description
+                    document.querySelectorAll('.dynamic-app-description').forEach(el => {
+                        el.textContent = APP_CONFIG.appDescription;
+                    });
+
+                    // Theme Color Meta Tag
+                    if (APP_CONFIG.themeColors && APP_CONFIG.themeColors[800]) {
+                        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
+                        if (metaThemeColor) {
+                            metaThemeColor.setAttribute('content', APP_CONFIG.themeColors[800]);
+                        }
+                    }
                 }
             });
         })();
@@ -138,7 +152,7 @@
 
                 <div class="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
                     <h1 class="text-xl font-black text-center mb-1 text-gray-800 dark:text-white dynamic-app-name">البراء بن مالك</h1>
-                    <p class="text-center text-gray-500 text-xs mb-6">منصة التحفيظ والمتابعه القرآنية</p>
+                    <p class="text-center text-gray-500 text-xs mb-6 dynamic-app-description">منصة التحفيظ والمتابعه القرآنية</p>
 
                     <!-- Step 1: Role Selection -->
                     <div id="auth-options-panel" class="space-y-4">

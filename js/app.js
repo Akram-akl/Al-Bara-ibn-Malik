@@ -2,7 +2,7 @@
 const LEVELS = APP_CONFIG.levels;
 
 function getLabel(key) {
-    const isAdult = !!(LEVELS[state.currentLevel] && LEVELS[state.currentLevel].isAdult);
+    const isAdult = state.currentLevel === 'ijazat';
     const labels = {
         'student': isAdult ? 'دارس' : 'طالب',
         'students': isAdult ? 'دارسين' : 'طلاب',
@@ -113,16 +113,9 @@ function showCustomConfirm(message) {
         `;
         document.body.insertAdjacentHTML('beforeend', html);
         if (window.lucide) window.lucide.createIcons();
-
         const modal = document.getElementById(modalId);
-        document.getElementById(`btn-cancel-${modalId}`).onclick = () => {
-            modal.remove();
-            resolve(false);
-        };
-        document.getElementById(`btn-confirm-${modalId}`).onclick = () => {
-            modal.remove();
-            resolve(true);
-        };
+        document.getElementById(`btn-cancel-${modalId}`).onclick = () => { modal.remove(); resolve(false); };
+        document.getElementById(`btn-confirm-${modalId}`).onclick = () => { modal.remove(); resolve(true); };
     });
 }
 
@@ -1153,70 +1146,37 @@ function updateTransferRequestsUI() {
 async function acceptTransferRequest(requestId, studentId, deleteOldDataStr, fromLevel) {
     const isConfirmed = await showCustomConfirm(`هل أنت متأكد من قبول ${getLabel('student')} في حلقتكم؟`);
     if (!isConfirmed) return;
-    
     const deleteOldData = (deleteOldDataStr === 'true');
-    
     try {
-        // 1. Update student level
-        await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "students", studentId), {
-            level: state.currentLevel,
-            updatedAt: new Date().toISOString()
-        });
-
-        // 2. Remove student from old groups
-        const groupsQ = window.firebaseOps.query(
-            window.firebaseOps.collection(window.db, "groups"),
-            window.firebaseOps.where("level", "==", fromLevel)
-        );
+        await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "students", studentId), { level: state.currentLevel, updatedAt: new Date().toISOString() });
+        const groupsQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, "groups"), window.firebaseOps.where("level", "==", fromLevel));
         const groupsSnap = await window.firebaseOps.getDocs(groupsQ);
         for (const doc of groupsSnap.docs) {
             const gData = doc.data();
             if (gData.members && gData.members.includes(studentId)) {
-                const newMembers = gData.members.filter(m => m !== studentId);
-                await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "groups", doc.id), { members: newMembers });
+                await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "groups", doc.id), { members: gData.members.filter(m => m !== studentId) });
             }
         }
-
-        // 3. Delete old scores if requested
         if (deleteOldData) {
             const scoresQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, "scores"), window.firebaseOps.where("studentId", "==", studentId));
             const scoresSnap = await window.firebaseOps.getDocs(scoresQ);
-            for (const sDoc of scoresSnap.docs) {
-                await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "scores", sDoc.id));
-            }
+            for (const sDoc of scoresSnap.docs) await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "scores", sDoc.id));
         }
-
-        // 4. ALWAYS delete student plan (both records and main plan) because the student moved
         try {
-            const plansQ = window.firebaseOps.query(
-                window.firebaseOps.collection(window.db, 'student_plans'),
-                window.firebaseOps.where('student_id', '==', studentId)
-            );
+            const plansQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, 'student_plans'), window.firebaseOps.where('student_id', '==', studentId));
             const plansSnap = await window.firebaseOps.getDocs(plansQ);
             for (const planDoc of plansSnap.docs) {
-                // Delete daily records for this plan
-                const dailyQ = window.firebaseOps.query(
-                    window.firebaseOps.collection(window.db, 'plan_daily_records'),
-                    window.firebaseOps.where('plan_id', '==', planDoc.id)
-                );
+                const dailyQ = window.firebaseOps.query(window.firebaseOps.collection(window.db, 'plan_daily_records'), window.firebaseOps.where('plan_id', '==', planDoc.id));
                 const dailySnap = await window.firebaseOps.getDocs(dailyQ);
-                for (const r of dailySnap.docs) {
-                    await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'plan_daily_records', r.id));
-                }
-                // Delete the plan itself
+                for (const r of dailySnap.docs) await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'plan_daily_records', r.id));
                 await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, 'student_plans', planDoc.id));
             }
-        } catch (planError) {
-            console.error("Failed to delete student plans on transfer:", planError);
-        }
-
-        // 5. Delete the request
+        } catch (planError) { console.error('Failed to delete student plans on transfer:', planError); }
         await window.firebaseOps.deleteDoc(window.firebaseOps.doc(window.db, "transfer_requests", requestId));
-        
         showToast(`تم قبول ونقل ${getLabel('student')} لحلقتكم بنجاح ✅`);
     } catch (e) {
-        console.error("Error accepting transfer:", e);
-        showToast(`حدث خطأ أثناء نقل ${getLabel('student')}`, "error");
+        console.error('Error accepting transfer:', e);
+        showToast(`حدث خطأ أثناء نقل ${getLabel('student')}`, 'error');
     }
 }
 
@@ -1224,14 +1184,9 @@ async function rejectTransferRequest(requestId) {
     const isConfirmed = await showCustomConfirm(`هل أنت متأكد من رفض استلام ${getLabel('student')}؟`);
     if (!isConfirmed) return;
     try {
-        await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "transfer_requests", requestId), {
-            status: 'rejected',
-            updatedAt: new Date().toISOString()
-        });
+        await window.firebaseOps.updateDoc(window.firebaseOps.doc(window.db, "transfer_requests", requestId), { status: 'rejected', updatedAt: new Date().toISOString() });
         showToast("تم رفض الطلب");
-    } catch(e) {
-        showToast("حدث خطأ", "error");
-    }
+    } catch(e) { showToast("حدث خطأ", "error"); }
 }
 
 async function dismissRejectedRequest(requestId) {
@@ -1386,7 +1341,7 @@ function renderSettings() {
              <!-- Teacher Contact Info -->
              <div class="bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-sm border">
                  <h3 class="font-bold mb-4 flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-purple-600"></i> المعلمون</h3>
-                 <p class="text-xs text-gray-500 mb-3">${LEVELS[state.currentLevel]?.isAdult ? 'بيانات التواصل للدارسين' : 'هذه البيانات ستظهر لولي الأمر للتواصل'}</p>
+                 <p class="text-xs text-gray-500 mb-3">${state.currentLevel === 'ijazat' ? 'بيانات التواصل للدارسين' : 'هذه البيانات ستظهر لولي الأمر للتواصل'}</p>
                  
                  <!-- Teachers List -->
                  <div id="teachers-list" class="space-y-2 mb-4">
@@ -1555,7 +1510,7 @@ function renderSettings() {
              </div>
 
              <div class="text-center text-xs text-gray-400 mt-8 mb-4">
-                 <p>برنامج المتابعة - إصدار v1</p>
+                 <p>برنامج المتابعة - إصدار v4.4.0</p>
                  <p class="opacity-50 mt-1 font-light">تم إنشاء هذا التطبيق بواسطة أكرم عقل</p>
              </div>
         </div>
@@ -2059,7 +2014,7 @@ function getStudentModalHTML() {
                      <div>
                          <label class="block text-sm font-bold mb-1">${getLabel('parent_phone')} (واتساب)</label>
                          <input type="tel" id="student-number" class="w-full bg-gray-50 dark:bg-gray-700 border border-gray-200 rounded-xl px-4 py-3" placeholder="مثال: 966500000000">
-                         <p class="text-xs text-gray-400 mt-1">${LEVELS[state.currentLevel]?.isAdult ? 'يستخدم للتواصل والمتابعة عبر واتساب' : 'يستخدم للتواصل عبر واتساب عند الغياب'}</p>
+                         <p class="text-xs text-gray-400 mt-1">${state.currentLevel === 'ijazat' ? 'يستخدم للتواصل والمتابعة عبر واتساب' : 'يستخدم للتواصل عبر واتساب عند الغياب'}</p>
                      </div>
                      
                      <div class="grid grid-cols-2 gap-3 mt-1">
@@ -2455,7 +2410,7 @@ function getGradingModalsHTML() {
                                                         <i data-lucide="check-circle" class="w-8 h-8"></i>
                                                     </div>
                                                     <h3 class="font-bold text-lg">تم رصد يوم النشاط!</h3>
-                                                    <p class="text-sm text-gray-500">${LEVELS[state.currentLevel]?.isAdult ? 'تم تسجيل الغياب، يمكنك مراسلة الدارسين مباشرة:' : 'تم تسجيل الغياب، يمكنك مراسلة أولياء الأمور:'}</p>
+                                                    <p class="text-sm text-gray-500">${state.currentLevel === 'ijazat' ? 'تم تسجيل الغياب، يمكنك مراسلة الدارسين مباشرة:' : 'تم تسجيل الغياب، يمكنك مراسلة أولياء الأمور:'}</p>
                                                 </div>
                                                 <div id="activity-absent-whatsapp-list" class="space-y-3 mb-6"></div>
                                                 <button onclick="closeModal('activity-absent-modal')" class="w-full py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 rounded-xl font-bold">إغلاق</button>
@@ -2572,7 +2527,7 @@ function openTransferModal() {
                             <input type="checkbox" id="transfer-delete-data" class="mt-1 w-4 h-4 text-red-600">
                             <div>
                                 <span class="block text-sm font-bold text-red-800 dark:text-red-300">مسح بيانات ال${getLabel('student')} في حلقتي</span>
-                                <span class="block text-xs text-red-600 dark:text-red-400 mt-1">${LEVELS[state.currentLevel]?.isAdult ? 'إذا قمت بتحديد هذا الخيار، سيتم حذف جميع درجات ومراجعات الدارس المسجلة باسم حلقتك (بشكل نهائي) بمجرد قبول المعلم الآخر للطلب.' : 'إذا قمت بتحديد هذا الخيار، سيتم حذف جميع درجات ومراجعات الطالب المسجلة باسم حلقتك (بشكل نهائي) بمجرد قبول المعلم الآخر للطلب.'} إذا تركته فارغاً سيتم الاحتفاظ بدرجاته كأرشيف لحلقتك.</span>
+                                <span class="block text-xs text-red-600 dark:text-red-400 mt-1">${state.currentLevel === 'ijazat' ? 'إذا قمت بتحديد هذا الخيار، سيتم حذف جميع درجات ومراجعات الدارس المسجلة باسم حلقتك (بشكل نهائي) بمجرد قبول المعلم الآخر للطلب.' : 'إذا قمت بتحديد هذا الخيار، سيتم حذف جميع درجات ومراجعات الطالب المسجلة باسم حلقتك (بشكل نهائي) بمجرد قبول المعلم الآخر للطلب.'} إذا تركته فارغاً سيتم الاحتفاظ بدرجاته كأرشيف لحلقتك.</span>
                             </div>
                         </label>
                     </div>
@@ -3486,7 +3441,7 @@ function openRateStudent(studentId) {
     // Handle Ijazat Note visibility
     const visSelect = document.getElementById('rate-note-visibility');
     if (visSelect) {
-        if (LEVELS[state.currentLevel]?.isAdult) {
+        if (state.currentLevel === 'ijazat') {
             visSelect.value = 'student'; // Always to student
             visSelect.classList.add('hidden'); // Hide it completely
         } else {
@@ -3747,8 +3702,8 @@ async function submitNote() {
     }
 
     let criteriaName = "ملاحظة المعلم";
-    if(visibility === 'student') criteriaName += LEVELS[state.currentLevel]?.isAdult ? " (مباشرة)" : " (للدارس فقط)";
-    else if(visibility === 'parent') criteriaName += LEVELS[state.currentLevel]?.isAdult ? " (للآخرين فقط)" : " (لولي الأمر فقط)";
+    if(visibility === 'student') criteriaName += state.currentLevel === 'ijazat' ? " (مباشرة)" : " (للدارس فقط)";
+    else if(visibility === 'parent') criteriaName += state.currentLevel === 'ijazat' ? " (للآخرين فقط)" : " (لولي الأمر فقط)";
 
     const data = {
         studentId: currentRateStudentId,
@@ -4063,7 +4018,7 @@ async function submitActivityDay() {
             const waList = $('#activity-absent-whatsapp-list');
             waList.innerHTML = absentStudents.map(s => {
                 const phone = s.studentNumber || '';
-                const msg = LEVELS[state.currentLevel]?.isAdult
+                const msg = state.currentLevel === 'ijazat'
                     ? `السلام عليكم أخي ${s.name}،\nتم تسجيل غيابك عن يوم النشاط في ${comp.name}.`
                     : `نحيطكم علماً بغياب الطالب (${s.name}) عن يوم النشاط المقام اليوم في مسابقة ${comp.name}.`;
                 const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
@@ -4308,7 +4263,7 @@ function init() {
                 regPanel.classList.remove('hidden');
                 
                 // Update labels dynamically based on level
-                const isAdult = !!(LEVELS[lvl] && LEVELS[lvl].isAdult);
+                const isAdult = lvl === 'ijazat';
                 document.getElementById('self-reg-title').textContent = isAdult ? 'تسجيل دارس جديد 📝' : 'تسجيل طالب جديد 📝';
                 document.getElementById('self-reg-name-label').textContent = 'ما اسمك؟ (الاسم الرباعي)';
                 document.getElementById('self-reg-phone-label').textContent = isAdult ? 'رقم جوالك الشخصي' : 'رقم جوال ولي أمرك';
@@ -4672,7 +4627,6 @@ function openAbsenceOptions() {
         modal = document.createElement('div');
         modal.id = 'absence-modal';
         modal.className = 'fixed inset-0 bg-black/60 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in';
-        // Content will be set below
         document.body.appendChild(modal);
     }
 
@@ -4682,7 +4636,7 @@ function openAbsenceOptions() {
                 <i data-lucide="user-x" class="w-8 h-8"></i>
             </div>
             <h3 class="font-bold text-lg mb-2">تسجيل غياب</h3>
-            <p class="text-gray-500 text-sm mb-6"> ${LEVELS[state.currentLevel]?.isAdult ? 'هل تعذر الحضور اليوم بعذر أم بدون؟' : 'هل غاب الطالب بعذر أم بدون عذر؟'}</p>
+            <p class="text-gray-500 text-sm mb-6"> ${state.currentLevel === 'ijazat' ? 'هل تعذر الحضور اليوم بعذر أم بدون؟' : 'هل غاب الطالب بعذر أم بدون عذر؟'}</p>
 
             <div class="grid grid-cols-1 gap-3">
                 <button onclick="confirmAbsence('excuse')" class="py-3 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-300 hover:bg-emerald-100 font-bold transition">
@@ -4721,7 +4675,7 @@ async function confirmAbsence(type) {
     var student = state.students.find(function (s) { return s.id === currentRateStudentId; });
     if (student && student.studentNumber) {
         var phone = student.studentNumber;
-        var msg = LEVELS[state.currentLevel]?.isAdult 
+        var msg = state.currentLevel === 'ijazat' 
             ? "السلام عليكم يا أخي " + student.name + "،\nتم تسجيل غياب لك اليوم (" + label + ").\nنرجو الحرص على الحضور والمتابعة."
             : "السلام عليكم ولي أمر الطالب " + student.name + "،\nتم تسجيل غياب للطالب اليوم (" + label + ").\nنرجو الحرص على الحضور.";
 
@@ -4735,7 +4689,7 @@ async function generateWeeklyReport() {
     if (!student) return;
 
     if (!student.studentNumber) {
-        showToast(LEVELS[state.currentLevel]?.isAdult ? "لا يوجد رقم جوال للتواصل" : "لا يوجد رقم هاتف لولي الأمر", "error");
+        showToast(state.currentLevel === 'ijazat' ? "لا يوجد رقم جوال للتواصل" : "لا يوجد رقم هاتف لولي الأمر", "error");
         return;
     }
 
@@ -4884,7 +4838,7 @@ async function generateWeeklyReport() {
 
         reportText += `------------------\n`;
         reportText += `✨ *المجموع النهائي: ${totalEarned} / ${totalPossible}*\n`;
-        reportText += `\n${LEVELS[state.currentLevel]?.isAdult ? 'شاكرين جهودكم 🌹' : 'شاكرين تعاونكم 🌹'}`;
+        reportText += `\n${state.currentLevel === 'ijazat' ? 'شاكرين جهودكم 🌹' : 'شاكرين تعاونكم 🌹'}`;
 
         // Send
         const url = `https://wa.me/${student.studentNumber}?text=${encodeURIComponent(reportText)}`;
@@ -5847,7 +5801,7 @@ function contactTeacher(studentName, teacherPhone) {
     let messageText = "";
     
     if (state.isParent) {
-        messageText = LEVELS[state.currentLevel]?.isAdult
+        messageText = state.currentLevel === 'ijazat'
             ? `السلام عليكم ورحمة الله وبركاته.. أنا أخوكم الدارس (${studentName})\nكنت أريد أن أستفسر عن بعض الأمور`
             : `السلام عليكم ورحمة الله وبركاته.. أنا ولي أمر الطالب (${studentName})\nكنت أريد أن أستفسر منك عن بعض الأمور`;
     } else {
@@ -6141,7 +6095,7 @@ async function exportStudentsXLSX() {
         const levelName = LEVELS[state.currentLevel] ? LEVELS[state.currentLevel].name : state.currentLevel;
         
         // Build rows
-        const phoneHeader = LEVELS[state.currentLevel]?.isAdult ? 'رقم الجوال' : 'جوال ولي الأمر';
+        const phoneHeader = state.currentLevel === 'ijazat' ? 'رقم الجوال' : 'جوال ولي الأمر';
         const rows = students.map((s, i) => ({
             '#': i + 1,
             'الاسم': s.name || '',
@@ -7638,8 +7592,8 @@ async function generatePDFReport() {
                                 <thead>
                                     <tr style="background: #e5e7eb;">
                                         <th style="padding: 10px; border: 1px solid #d1d5db; width: 40px; text-align: center;">م</th>
-                                        <th style="padding: 10px; border: 1px solid #d1d5db;">${LEVELS[state.currentLevel]?.isAdult ? 'اسم الدارس' : 'اسم الطالب'}</th>
-                                        <th style="padding: 10px; border: 1px solid #d1d5db; width: 140px; text-align: center;">${LEVELS[state.currentLevel]?.isAdult ? 'رقم الجوال' : 'جوال ولي الأمر'}</th>
+                                        <th style="padding: 10px; border: 1px solid #d1d5db;">${state.currentLevel === 'ijazat' ? 'اسم الدارس' : 'اسم الطالب'}</th>
+                                        <th style="padding: 10px; border: 1px solid #d1d5db; width: 140px; text-align: center;">${state.currentLevel === 'ijazat' ? 'رقم الجوال' : 'جوال ولي الأمر'}</th>
                                         <th style="padding: 10px; border: 1px solid #d1d5db; width: 50px; text-align: center; color: #b91c1c;">بدون عذر</th>
                                         <th style="padding: 10px; border: 1px solid #d1d5db; width: 50px; text-align: center; color: #d97706;">بعذر</th>
                                         <th style="padding: 10px; border: 1px solid #d1d5db; width: 60px; text-align: center; color: #047857;">موجب</th>
@@ -8367,7 +8321,7 @@ function openDirectGradingStudent(studentId) {
     // Handle Ijazat Note visibility
     const visSelect = document.getElementById('rate-note-visibility');
     if (visSelect) {
-        if (LEVELS[state.currentLevel]?.isAdult) {
+        if (state.currentLevel === 'ijazat') {
             visSelect.value = 'student'; // Always to student
             visSelect.classList.add('hidden'); // Hide it completely
         } else {
@@ -8507,7 +8461,7 @@ async function submitAbsence(label, points) {
         // 2. WhatsApp Notification
         if (student && student.studentNumber) {
             const phone = student.studentNumber;
-            const msg = LEVELS[state.currentLevel]?.isAdult 
+            const msg = state.currentLevel === 'ijazat' 
                 ? `السلام عليكم يا أخي ${student.name}،\nتم تسجيل غياب لك اليوم (${label}).\nنرجو الحرص على الحضور والمتابعة.`
                 : `السلام عليكم ولي أمر الطالب ${student.name}،\nتم تسجيل غياب للطالب اليوم (${label}).\nنرجو الحرص على الحضور.`;
 
@@ -8676,9 +8630,9 @@ function ensureRateStudentModal() {
                     <textarea id="rate-note-text" rows="2" class="w-full bg-white dark:bg-gray-700 border border-yellow-200 rounded-lg px-2 py-2 text-xs" placeholder="اكتب الملاحظة هنا..."></textarea>
                     <div class="space-y-2">
                         <select id="rate-note-visibility" class="w-full bg-white dark:bg-gray-700 border border-yellow-200 rounded-lg px-2 py-2 text-xs font-bold text-gray-600">
-                            <option value="both">${LEVELS[state.currentLevel]?.isAdult ? 'للجميع' : 'للطالب وولي الأمر'}</option>
-                            <option value="student">${LEVELS[state.currentLevel]?.isAdult ? 'خاص بي فقط' : 'للطالب فقط'}</option>
-                            <option value="parent">${LEVELS[state.currentLevel]?.isAdult ? 'للآخرين فقط' : 'لولي الأمر فقط'}</option>
+                            <option value="both">${state.currentLevel === 'ijazat' ? 'للجميع' : 'للطالب وولي الأمر'}</option>
+                            <option value="student">${state.currentLevel === 'ijazat' ? 'خاص بي فقط' : 'للطالب فقط'}</option>
+                            <option value="parent">${state.currentLevel === 'ijazat' ? 'للآخرين فقط' : 'لولي الأمر فقط'}</option>
                         </select>
                         <button onclick="submitNote()" class="w-full py-2.5 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-xs rounded-xl transition flex items-center justify-center gap-2 shadow-sm">
                             <i data-lucide="send" class="w-4 h-4"></i> إرسال الملاحظة
@@ -8765,7 +8719,7 @@ function openCollectiveNoteModal() {
     // Auto-hide visibility options for ijazat adult circles
     const visibilityContainer = $('#collective-note-visibility-container');
     if (visibilityContainer) {
-        if (LEVELS[state.currentLevel]?.isAdult) {
+        if (state.currentLevel === 'ijazat') {
             visibilityContainer.style.display = 'none';
             $('#collective-note-visibility').value = 'student'; // Force student only
         } else {
@@ -8866,8 +8820,8 @@ async function submitCollectiveNote() {
     lucide.createIcons();
 
     let criteriaName = "ملاحظة المعلم (جماعية)";
-    if(visibility === 'student') criteriaName += LEVELS[state.currentLevel]?.isAdult ? " (مباشرة)" : ` (لـ${getLabel('student')} فقط)`;
-    else if(visibility === 'parent') criteriaName += LEVELS[state.currentLevel]?.isAdult ? " (للآخرين فقط)" : ` (لـ${getLabel('parent')} فقط)`;
+    if(visibility === 'student') criteriaName += state.currentLevel === 'ijazat' ? " (مباشرة)" : ` (لـ${getLabel('student')} فقط)`;
+    else if(visibility === 'parent') criteriaName += state.currentLevel === 'ijazat' ? " (للآخرين فقط)" : ` (لـ${getLabel('parent')} فقط)`;
 
     try {
         const batch = window.firebaseOps.writeBatch(window.db);
@@ -10466,7 +10420,7 @@ async function checkPlanBeforeAbsence(studentId, date, onContinue) {
                 <div class="bg-orange-100 dark:bg-orange-900/30 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-600 dark:text-orange-400">
                     <i data-lucide="calendar-x" class="w-8 h-8"></i>
                 </div>
-                <h3 class="font-bold text-lg mb-1">لـ${getLabel('student')} ورد اليوم!</h3>
+                <h3 class="font-bold text-lg mb-1">للطالب ورد اليوم!</h3>
                 <p class="text-gray-500 dark:text-gray-400 text-sm mb-3">ماذا تريد أن تفعل بورد الخطة؟</p>
                 <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-3 text-right mb-5 space-y-1">${planSummary}</div>
                 <div class="space-y-2">

@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#065f46">
-    <title>البراء بن مالك</title>
+    <title>لاكرم فقط</title>
     <script>
         // Diagnostic script - Runs before anything else
         (function () {
@@ -24,30 +24,6 @@
             } catch (e) {
                 alert('عذراً، متصفحك قديم جداً ولا يدعم تشغيل التطبيق بكامل مميزاته. يرجى استخدام متصفح حديث مثل Chrome.\n' + e.message);
             }
-            
-            // Dynamic App Identity Binding
-            window.addEventListener('DOMContentLoaded', () => {
-                if (typeof APP_CONFIG !== 'undefined') {
-                    // App Name
-                    document.title = APP_CONFIG.appName;
-                    document.querySelectorAll('.dynamic-app-name').forEach(el => {
-                        el.textContent = APP_CONFIG.appName;
-                    });
-                    
-                    // App Description
-                    document.querySelectorAll('.dynamic-app-description').forEach(el => {
-                        el.textContent = APP_CONFIG.appDescription;
-                    });
-
-                    // Theme Color Meta Tag
-                    if (APP_CONFIG.themeColors && APP_CONFIG.themeColors[800]) {
-                        let metaThemeColor = document.querySelector('meta[name="theme-color"]');
-                        if (metaThemeColor) {
-                            metaThemeColor.setAttribute('content', APP_CONFIG.themeColors[800]);
-                        }
-                    }
-                }
-            });
         })();
     </script>
 
@@ -74,50 +50,46 @@
     <link rel="apple-touch-icon" href="./apple-touch-icon.jpg">
     <link rel="icon" type="image/jpeg" href="./apple-touch-icon.jpg">
 
-    <!-- Tailwind / Custom CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="./css/styles.css?v=1" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" rel="stylesheet">
+    <!-- Config & Tailwind -->
+    <script src="./js/config.js?v=1"></script>
     <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['Tajawal', 'sans-serif'],
-                    }
+        if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.themeColors) {
+            window.tailwind = { config: { theme: { extend: { colors: { emerald: APP_CONFIG.themeColors } } } } };
+        }
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (typeof tailwind !== 'undefined') {
+            tailwind.config = {
+                darkMode: 'class',
+                theme: { extend: { fontFamily: { sans: ['Tajawal', 'sans-serif'] }, colors: { emerald: (typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.themeColors : undefined) } } }
+            };
+        }
+    </script>
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            if (typeof APP_CONFIG !== 'undefined') {
+                document.title = APP_CONFIG.appName;
+                document.querySelectorAll('.dynamic-app-name').forEach(el => el.textContent = APP_CONFIG.appName);
+                document.querySelectorAll('.dynamic-app-description').forEach(el => el.textContent = APP_CONFIG.appDescription);
+                if (APP_CONFIG.themeColors && APP_CONFIG.themeColors[800]) {
+                    const meta = document.querySelector('meta[name="theme-color"]');
+                    if (meta) meta.setAttribute('content', APP_CONFIG.themeColors[800]);
                 }
             }
-        }
+        });
     </script>
 
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom Styles -->
-    <!-- Config, Tailwind & Supabase SDK -->
-    <script src="./js/config.js?v=2"></script>
-    <script>
-        // Apply custom theme colors if defined in config
-        if (typeof APP_CONFIG !== 'undefined' && APP_CONFIG.themeColors) {
-            window.tailwind = {
-                config: {
-                    theme: {
-                        extend: {
-                            colors: {
-                                // We map 'emerald' to the custom theme colors because the app HTML
-                                // uses emerald classes everywhere (e.g. bg-emerald-600)
-                                emerald: APP_CONFIG.themeColors
-                            }
-                        }
-                    }
-                }
-            };
-        }
-    </script>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./css/styles.css?v=3.1">
+
+
+    <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="./js/supabase.js?v=2"></script>
+    <script src="./js/supabase.js?v=1.0"></script>
 </head>
 
 
@@ -151,7 +123,7 @@
                 </div>
 
                 <div class="p-6 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <h1 class="text-xl font-black text-center mb-1 text-gray-800 dark:text-white dynamic-app-name">البراء بن مالك</h1>
+                    <h1 class="text-xl font-black text-center mb-1 text-gray-800 dark:text-white dynamic-app-name">لاكرم فقط</h1>
                     <p class="text-center text-gray-500 text-xs mb-6 dynamic-app-description">منصة التحفيظ والمتابعه القرآنية</p>
 
                     <!-- Step 1: Role Selection -->
@@ -208,13 +180,8 @@
                                 <select id="student-level-select" aria-label="اختر الحلقة"
                                     class="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:border-emerald-500">
                                     <option value="" disabled selected>-- اختر --</option>
-                                    <option value="uthman">حلقة عثمان بن عفان</option>
-                                    <option value="umar">حلقة عمر بن الخطاب</option>
-                                    <option value="khalid">حلقة خالد بن الوليد</option>
-                                    <option value="ahmad_hanbal">حلقة الإمام أحمد بن حنبل</option>
-                                    <option value="shatbi">حلقة الإمام الشاطبي</option>
-                                    <option value="abu_amr">حلقة أبو عمرو البصري</option>
-                                    <option value="bukhari">حلقة الإمام البخاري</option>
+                                    <option value="ibn_umar">حلقة عبدالله بن عمر</option>
+                                    <option value="ijazat">حلقة إجازات</option>
                                 </select>
                             </div>
 
@@ -269,14 +236,20 @@
                                 <select id="teacher-level-select" title="اختر الحلقة" aria-label="اختر الحلقة"
                                     class="w-full bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:border-purple-500">
                                     <option value="" disabled selected>-- اختر الحلقة --</option>
-                                    <option value="uthman">حلقة عثمان بن عفان</option>
-                                    <option value="umar">حلقة عمر بن الخطاب</option>
-                                    <option value="khalid">حلقة خالد بن الوليد</option>
-                                    <option value="ahmad_hanbal">حلقة الإمام أحمد بن حنبل</option>
-                                    <option value="shatbi">حلقة الإمام الشاطبي</option>
-                                    <option value="abu_amr">حلقة أبو عمرو البصري</option>
-                                    <option value="bukhari">حلقة الإمام البخاري</option>
+                                    <option value="ibn_umar">حلقة عبدالله بن عمر</option>
+                                    <option value="ijazat">حلقة إجازات</option>
                                 </select>
+                                <div class="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl">
+                                    <p class="text-xs text-amber-700 dark:text-amber-300 font-bold mb-1">🔑 كلمات المرور للتجربة:</p>
+                                    <p class="text-[11px] text-amber-600 dark:text-amber-400">حلقة عبدالله بن عمر: <span class="font-mono font-bold">1234</span></p>
+                                    <p class="text-[11px] text-amber-600 dark:text-amber-400">حلقة إجازات: <span class="font-mono font-bold">5678</span></p>
+                                    <p class="text-[11px] text-amber-600 dark:text-amber-400">كلمة المرور الرئيسية: <span class="font-mono font-bold">112233</span></p>
+                                </div>
+                                <div class="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+                                    <p class="text-xs text-blue-700 dark:text-blue-300 font-bold mb-1">ℹ️ ملاحظة عن الحلقات:</p>
+                                    <p class="text-[11px] text-blue-600 dark:text-blue-400">🟢 <strong>حلقة عبدالله بن عمر:</strong> مخصصة للطلاب الصغار — يستخدم مصطلحات: طالب، ولي أمر.</p>
+                                    <p class="text-[11px] text-blue-600 dark:text-blue-400">🟡 <strong>حلقة إجازات:</strong> مخصصة للكبار والجامعيين — يستخدم مصطلحات: دارس، رقم الجوال الشخصي بدلاً من ولي الأمر.</p>
+                                </div>
                             </div>
 
                             <input type="password" id="teacher-password-input"
@@ -334,7 +307,7 @@
                 </div> <!-- Closes Auth Card (bg-white rounded-[2.5rem]) -->
             </div> <!-- Closes relative w-full max-w-md -->
             
-            <div class="fixed bottom-4 text-emerald-200/50 text-[10px]">v1</div>
+            <div class="fixed bottom-4 text-emerald-200/50 text-[10px]">v4.3.0</div>
         </div> <!-- Closes #auth-overlay -->
 
         <!-- Student Self-Registration Panel (Standalone Centered Modal) -->
@@ -424,7 +397,7 @@
                 <div class="flex items-center gap-3">
                     <i data-lucide="award" class="w-8 h-8 text-yellow-300"></i>
                     <div>
-                        <h1 class="font-bold text-lg leading-tight dynamic-app-name">البراء بن مالك</h1>
+                        <h1 class="font-bold text-lg leading-tight dynamic-app-name">لاكرم فقط</h1>
                         <p class="text-emerald-200 text-xs" id="current-mode-label">وضع الطالب</p>
                     </div>
                 </div>
@@ -704,10 +677,10 @@
     </div>
 
     <!-- Application Logic -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=1"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js?v=3"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="./js/quranAnalyzer.js?v=1"></script>
-    <script src="./js/app.js?v=1"></script>
+    <script src="./js/quranAnalyzer.js?v=3"></script>
+    <script src="./js/app.js?v=4"></script>
 
 </body>
 

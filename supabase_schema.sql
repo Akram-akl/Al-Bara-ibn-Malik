@@ -557,14 +557,19 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- GET LEADERBOARD RPC FUNCTION (server-side calculation)
+-- [FIX]: Changed return type from BIGINT to NUMERIC to match the points column type.
+--        Previously, the BIGINT cast caused precision loss and type mismatch errors.
+-- DROP required because PostgreSQL cannot change return type of existing function directly.
+DROP FUNCTION IF EXISTS get_leaderboard(text, uuid);
 CREATE OR REPLACE FUNCTION get_leaderboard(p_level TEXT, p_competition_id UUID DEFAULT NULL)
-RETURNS TABLE(student_id UUID, student_name TEXT, total_points BIGINT) AS $$
+RETURNS TABLE(student_id UUID, student_name TEXT, total_points NUMERIC) AS $$
 BEGIN
     RETURN QUERY
     SELECT s.id, s.name,
            COALESCE(SUM(sc.points), 0)::NUMERIC as total
     FROM students s
     LEFT JOIN scores sc ON sc.student_id = s.id
+        AND sc.level = p_level
         AND (p_competition_id IS NULL OR sc.competition_id = p_competition_id)
     WHERE s.level = p_level
     GROUP BY s.id, s.name
@@ -594,6 +599,9 @@ CREATE INDEX IF NOT EXISTS idx_activity_days_date ON activity_days(date);
 CREATE INDEX IF NOT EXISTS idx_scores_student_id ON scores(student_id);
 CREATE INDEX IF NOT EXISTS idx_scores_competition_id ON scores(competition_id);
 CREATE INDEX IF NOT EXISTS idx_scores_date ON scores(date);
+-- [FIX]: Added missing index on scores.level - critical for leaderboard and export queries
+CREATE INDEX IF NOT EXISTS idx_scores_level ON scores(level);
+CREATE INDEX IF NOT EXISTS idx_scores_level_student_id ON scores(level, student_id);
 CREATE INDEX IF NOT EXISTS idx_students_level ON students(level);
 CREATE INDEX IF NOT EXISTS idx_students_parent_phone ON students(parent_phone);
 CREATE INDEX IF NOT EXISTS idx_groups_competition_id ON groups(competition_id);
